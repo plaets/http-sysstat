@@ -8,6 +8,8 @@ use std::io::Result;
 mod stats;
 use stats::{StatsCollector, StatsConfig};
 
+mod cpu_load_collector;
+
 fn get_json_stats(cfg: &StatsConfig) -> HttpResponse {
     let collector = StatsCollector::new(cfg);
     HttpResponse::Ok().json(collector.get_stats())
@@ -48,8 +50,6 @@ async fn index(info: Query<IndexQuery>) -> impl Responder {
     }
 }
 
-//looks like actix has a memory leak somewhere 
-//this sucks
 #[actix_rt::main]
 async fn main() -> Result<()> {
     HttpServer::new(|| App::new().service(index))
@@ -57,3 +57,12 @@ async fn main() -> Result<()> {
         .run()
         .await
 }
+
+
+/* config:
+ * scripts
+ * cpu load average checking interval
+ * cache
+ * password protection
+ * filter filesystems
+ */

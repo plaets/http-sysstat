@@ -29,8 +29,8 @@ pub struct SystemInfo {
     pub cpu_load: Option<CpuLoad>,
     pub load_avg: Option<CpuLoadAvg>,
     pub net_stats: Option<Vec<NetworkInfo>>,
+    pub sock_stats: Option<SocketInfo>,
     pub fs_stats: Option<Vec<FilesystemInfo>>,
-    //socket stats
     //custom scripts
 }
 
@@ -74,21 +74,22 @@ pub struct NetworkStats {
 }
 
 #[derive(Serialize)]
+pub struct SocketInfo {
+    pub tcp_socks: u64,
+    pub tcp_socks_orphaned: u64,
+    pub udp_socks: u64,
+    pub tcp6_socks: u64,
+    pub udp6_socks: u64,
+}
+
+#[derive(Serialize)]
 pub struct FilesystemInfo {
     pub name: String,
+    #[serde(rename = "type")]
+    pub fs_type: String,
     pub free: MemoryStat,
     pub avail: MemoryStat,
     pub total: MemoryStat,
-}
-
-fn print_err<T>(r: Result<T>) -> Option<T> {
-    match r {
-        Ok(val) => Some(val),
-        Err(err) => {
-            println!("error: {:?}", err);
-            None
-        }
-    }
 }
 
 pub struct StatsConfig {
@@ -109,15 +110,26 @@ impl<'a> StatsCollector<'a> {
         }
     }
 
+    fn print_err<T>(&self, r: Result<T>) -> Option<T> {
+        match r {
+            Ok(val) => Some(val),
+            Err(err) => {
+                println!("error: {:?}", err);
+                None
+            }
+        }
+    }
+
     pub fn get_stats(&self) -> SystemInfo {
         SystemInfo {
             date: self.get_current_date(), //why is timestamp signed
-            uptime: print_err(self.sys.uptime()).map(|d| d.as_secs()),
-            boot_time: print_err(self.sys.boot_time()).map(|d| self.convert_to_date(d)),
+            uptime: self.print_err(self.sys.uptime()).map(|d| d.as_secs()),
+            boot_time: self.print_err(self.sys.boot_time()).map(|d| self.convert_to_date(d)),
             mem: self.get_mem_stats(),
             cpu_load: self.get_cpu_load(), 
             load_avg: self.get_cpu_load_avg(), 
             net_stats: self.get_network_stats(),
+            sock_stats: self.get_sock_stats(),
             fs_stats: self.get_fs_stats(),
         }
     }
@@ -147,7 +159,7 @@ impl<'a> StatsCollector<'a> {
     }
 
     fn get_mem_stats(&self) -> Option<MemoryInfo> {
-        print_err(self.sys.memory()).map(|m| MemoryInfo {
+        self.print_err(self.sys.memory()).map(|m| MemoryInfo {
             total: self.to_memorystat(m.total.as_u64()),
             free: self.to_memorystat(m.free.as_u64()),
             percentage_used: (((m.total.as_u64()-m.free.as_u64()) as f32)/(m.total.as_u64() as f32) * 100.0), 
@@ -156,7 +168,7 @@ impl<'a> StatsCollector<'a> {
     }
 
     fn get_cpu_load(&self) -> Option<CpuLoad> {
-        let cpu_load = print_err(self.sys.cpu_load_aggregate()); //makes no sense right now, you need to wait like a second before you call done
+        let cpu_load = self.print_err(self.sys.cpu_load_aggregate()); //makes no sense right now, you need to wait like a second before you call done
 
         cpu_load.map(|c| c.done().unwrap()).map(|c| CpuLoad {
             user: c.user,
@@ -168,7 +180,7 @@ impl<'a> StatsCollector<'a> {
     }
 
     fn get_cpu_load_avg(&self) -> Option<CpuLoadAvg> {
-        print_err(self.sys.load_average()).map(|l| CpuLoadAvg {
+        self.print_err(self.sys.load_average()).map(|l| CpuLoadAvg {
             one: l.one,
             five: l.five,
             fifteen: l.fifteen,
@@ -176,11 +188,11 @@ impl<'a> StatsCollector<'a> {
     }
 
     fn get_network_stats(&self) -> Option<Vec<NetworkInfo>> {
-        print_err(self.sys.networks()).map(|networks| 
+        self.print_err(self.sys.networks()).map(|networks| 
             networks.values().map(|network| 
                 NetworkInfo {
                     name: network.name.clone(),
-                    stats: print_err(self.sys.network_stats(&network.name)).map(|stats| NetworkStats {
+                    stats: self.print_err(self.sys.network_stats(&network.name)).map(|stats| NetworkStats {
                         rx_bytes: self.to_memorystat(stats.rx_bytes.as_u64()),
                         tx_bytes: self.to_memorystat(stats.tx_bytes.as_u64()),
                         rx_packets: stats.rx_packets,
@@ -193,11 +205,24 @@ impl<'a> StatsCollector<'a> {
         )
     }
 
+    fn get_sock_stats(&self) -> Option<SocketInfo> {
+        self.print_err(self.sys.socket_stats()).map(|stats|
+            SocketInfo {
+                tcp_socks: stats.tcp_sockets_in_use as u64,
+                tcp_socks_orphaned: stats.tcp_sockets_orphaned as u64,
+                udp_socks: stats.udp_sockets_in_use as u64,
+                tcp6_socks: stats.tcp6_sockets_in_use as u64,
+                udp6_socks: stats.udp6_sockets_in_use as u64,
+            }
+        )
+    }
+
     fn get_fs_stats(&self) -> Option<Vec<FilesystemInfo>> {
-        print_err(self.sys.mounts()).map(|mounts|
+        self.print_err(self.sys.mounts()).map(|mounts|
             mounts.iter().map(|mount| 
                 FilesystemInfo {
                     name: mount.fs_mounted_from.clone(),
+                    fs_type: mount.fs_type.clone(),
                     free: self.to_memorystat(mount.free.as_u64()),
                     avail: self.to_memorystat(mount.avail.as_u64()),
                     total: self.to_memorystat(mount.total.as_u64()),
