@@ -1,24 +1,24 @@
 use actix_web::{
-    Responder, HttpResponse, HttpServer, App, get,
+    Responder, HttpResponse, HttpRequest, HttpServer, App, get,
     web::{Query, Data},
 };
-use systemstat::{System, Platform, data::CPULoad};
 use serde::{Deserialize};
+use serde_json::{Value};
+use serde_urlencoded;
 use std::io::Result;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
+use std::collections::HashMap;
 
 mod stats;
-use stats::{StatsCollector, StatsConfig};
+use stats::{StatsConfig, StatCollector, get_all};
 
 mod interval_collector;
 use interval_collector::IntervalCollectorHandle;
 
-mod cpu_load_collector;
-use cpu_load_collector::create_cpu_collector;
-
-fn get_json_stats(cfg: &StatsConfig) -> HttpResponse {
-    let collector = StatsCollector::new(cfg);
-    HttpResponse::Ok().json(collector.get_stats())
+fn get_json_stats(cfg: &StatsConfig, data: &AppData) -> HttpResponse {
+    let collectors = data.collectors.clone();
+    let collectors_guard = collectors.lock().unwrap();
+    HttpResponse::Ok().json((*collectors_guard).iter().map(|c| ((*c).name(), (*c).collect(&cfg).unwrap())).collect::<HashMap<&'static str, Value>>())
 }
 
 #[derive(Deserialize, Clone, Copy)]
@@ -44,31 +44,32 @@ struct IndexQuery {
 }
 
 struct AppData {
-    cpu_load_collector: Arc<IntervalCollectorHandle<CPULoad>>,
+    collectors: Arc<Mutex<Vec<Box<StatCollector>>>>
 }
 
 #[get("/")]
-async fn index(info: Query<IndexQuery>, data: Data<AppData>) -> impl Responder {
+async fn index(info: Query<IndexQuery>, data: Data<AppData>, req: HttpRequest) -> impl Responder {
     let cfg = StatsConfig {
         date_format: info.date_format.unwrap_or(DateFormat::Epoch),
         human_readable: info.human_readable.unwrap_or(false),
-        cpu_load_collector_handle: data.cpu_load_collector.clone(),
+        query_other: serde_urlencoded::from_str(req.query_string()).unwrap(),
     };
 
     match info.output_format {
-        Some(OutputFormat::Json) => get_json_stats(&cfg),
+        Some(OutputFormat::Json) => get_json_stats(&cfg, &data),
         Some(OutputFormat::Html) | None => HttpResponse::Ok().body("html"),
     }
 }
 
 #[actix_rt::main]
 async fn main() -> Result<()> {
-    let collector_handle = Arc::new(create_cpu_collector());
+    let collectors = Arc::new(Mutex::new(get_all()));
+
     HttpServer::new(move || 
         App::new()
             .service(index)
             .data(AppData {
-                cpu_load_collector: collector_handle.clone(),
+                collectors: collectors.clone(),
             })
         )
         .bind("0.0.0.0:8080")?

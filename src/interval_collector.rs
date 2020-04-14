@@ -43,7 +43,7 @@ impl<T: Send + Sync + 'static, D: Send + Sync + 'static> IntervalCollector<T,D> 
 
     pub fn start(self) -> IntervalCollectorHandle<T> {
         let last_result = self.last_result.clone();
-        let mut s = self;
+        let s = self;
         IntervalCollectorHandle {
             thread_handle: std::thread::spawn(move || {
                 let mut f = s.collect.unwrap();

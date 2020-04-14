@@ -3,6 +3,9 @@
 actix-rt = "=1.0.0"
 actix-web = "2.0.0"
 systemstat = "0.1.5"
+serde_urlencoded = "0.5"
+
+[dependencies.serde_json]
 
 [dependencies.chrono]
 features = ["serde"]
