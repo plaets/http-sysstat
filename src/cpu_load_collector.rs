@@ -1,57 +1,27 @@
-use systemstat::{System, Platform, data::CPULoad};
-use std::sync::{Arc, RwLock};
-use std::thread;
+use systemstat::{System, Platform, CPULoad, data::DelayedMeasurement};
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use std::io::Result;
 
-pub struct CpuLoadCollector {
-    pub ms_interval: u64,
-    pub last_result: Arc<RwLock<Option<CPULoad>>>,
-    sys: System,
-}
+use crate::interval_collector::{IntervalCollector, IntervalCollectorHandle};
 
-fn print_err<T>(r: Result<T>) -> Option<T> {
-    match r {
-        Ok(val) => Some(val),
-        Err(err) => {
-            println!("error: {:?}", err);
-            None
-        }
-    }
-}
+pub fn create_cpu_collector() -> IntervalCollectorHandle<CPULoad> {
+    let mut collector = IntervalCollector::new();
+    collector
+        .interval(Duration::from_millis(5000))
+        .collect(|cpu: Arc<Mutex<Option<CPULoad>>>, measurement: Arc<Mutex<Option<Mutex<DelayedMeasurement<CPULoad>>>>>| {
+            //yes, a double mutex
+            //i want to die
+            let sys = System::new();
+            let measurement = measurement.clone();
+            let mut measurement_guard = measurement.lock().unwrap(); //see if i care
+            if let Some(measurement) = &*measurement_guard {
+                let mut measurement_guard = measurement.lock().unwrap();       
+                let cpu = cpu.clone();
+                let mut cpu_guard = cpu.lock().unwrap();
+                *cpu_guard = Some(measurement_guard.done().unwrap());
+            }
+            *measurement_guard = Some(Mutex::new(sys.cpu_load_aggregate().unwrap()));
+        });
 
-pub struct CollectorHandle {
-    pub last_result: Arc<RwLock<Option<CPULoad>>>,
-    pub join_handle: thread::JoinHandle<()>,
-}
-
-pub fn spawn_collector_thread(ms_interval: u64) -> CollectorHandle {
-    let collector = CpuLoadCollector::new(ms_interval);
-    CollectorHandle {
-        last_result: collector.last_result.clone(),
-        join_handle: thread::spawn(move || collector.start())
-    }
-}
-
-impl CpuLoadCollector {
-    pub fn new(ms_interval: u64) -> CpuLoadCollector {
-        CpuLoadCollector {
-            ms_interval,
-            last_result: Arc::new(RwLock::new(None)),
-            sys: System::new(),
-        }
-    }
-
-    pub fn start(&self) {
-        loop {
-            let cpu_load = self.sys.cpu_load_aggregate();
-            thread::sleep(Duration::from_millis(self.ms_interval));
-            let mut last_res_guard = (*self.last_result).write().unwrap();
-            (*last_res_guard) = print_err(cpu_load.map(|c| c.done().unwrap()));
-        }
-    }
-}
-
-pub fn test() {
-    let handle = spawn_collector_thread(5000);
+    collector.start()
 }

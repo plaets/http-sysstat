@@ -1,9 +1,11 @@
 use serde::{Serialize};
-use systemstat::{System, Platform};
+use systemstat::{System, Platform, data::CPULoad};
 use chrono::{offset, Utc, Local, DateTime};
 use std::io::Result;
+use std::sync::Arc;
 
 use crate::{DateFormat};
+use crate::interval_collector::IntervalCollectorHandle;
 
 #[derive(Serialize)]
 #[serde(untagged)]
@@ -95,6 +97,7 @@ pub struct FilesystemInfo {
 pub struct StatsConfig {
     pub date_format: DateFormat,
     pub human_readable: bool,
+    pub cpu_load_collector_handle: Arc<IntervalCollectorHandle<CPULoad>>,
 }
 
 pub struct StatsCollector<'a>  {
@@ -168,15 +171,18 @@ impl<'a> StatsCollector<'a> {
     }
 
     fn get_cpu_load(&self) -> Option<CpuLoad> {
-        let cpu_load = self.print_err(self.sys.cpu_load_aggregate()); //makes no sense right now, you need to wait like a second before you call done
+        let last_result = self.cfg.cpu_load_collector_handle.clone().last_result.clone();
+        let last_result_lock = last_result.lock().unwrap();
 
-        cpu_load.map(|c| c.done().unwrap()).map(|c| CpuLoad {
-            user: c.user,
-            nice: c.nice,
-            system: c.system,
-            interrupt: c.interrupt,
-            idle: c.idle,
-        })
+        (*last_result_lock).as_ref().map(|c|
+            CpuLoad {
+                user: c.user,
+                nice: c.nice,
+                system: c.system,
+                interrupt: c.interrupt,
+                idle: c.idle,
+            }
+        )
     }
 
     fn get_cpu_load_avg(&self) -> Option<CpuLoadAvg> {
@@ -219,13 +225,17 @@ impl<'a> StatsCollector<'a> {
 
     fn get_fs_stats(&self) -> Option<Vec<FilesystemInfo>> {
         self.print_err(self.sys.mounts()).map(|mounts|
-            mounts.iter().map(|mount| 
-                FilesystemInfo {
-                    name: mount.fs_mounted_from.clone(),
-                    fs_type: mount.fs_type.clone(),
-                    free: self.to_memorystat(mount.free.as_u64()),
-                    avail: self.to_memorystat(mount.avail.as_u64()),
-                    total: self.to_memorystat(mount.total.as_u64()),
+            mounts.iter().filter_map(|mount| 
+                if mount.total.as_u64() != 0 {
+                    Some(FilesystemInfo {
+                        name: mount.fs_mounted_from.clone(),
+                        fs_type: mount.fs_type.clone(),
+                        free: self.to_memorystat(mount.free.as_u64()),
+                        avail: self.to_memorystat(mount.avail.as_u64()),
+                        total: self.to_memorystat(mount.total.as_u64()),
+                    })
+                } else {
+                    None
                 }
             ).collect::<Vec<FilesystemInfo>>()
         )

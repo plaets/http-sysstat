@@ -1,14 +1,20 @@
 use actix_web::{
     Responder, HttpResponse, HttpServer, App, get,
-    web::{Query},
+    web::{Query, Data},
 };
+use systemstat::{System, Platform, data::CPULoad};
 use serde::{Deserialize};
 use std::io::Result;
+use std::sync::Arc;
 
 mod stats;
 use stats::{StatsCollector, StatsConfig};
 
+mod interval_collector;
+use interval_collector::IntervalCollectorHandle;
+
 mod cpu_load_collector;
+use cpu_load_collector::create_cpu_collector;
 
 fn get_json_stats(cfg: &StatsConfig) -> HttpResponse {
     let collector = StatsCollector::new(cfg);
@@ -37,11 +43,16 @@ struct IndexQuery {
     human_readable: Option<bool>
 }
 
+struct AppData {
+    cpu_load_collector: Arc<IntervalCollectorHandle<CPULoad>>,
+}
+
 #[get("/")]
-async fn index(info: Query<IndexQuery>) -> impl Responder {
+async fn index(info: Query<IndexQuery>, data: Data<AppData>) -> impl Responder {
     let cfg = StatsConfig {
         date_format: info.date_format.unwrap_or(DateFormat::Epoch),
         human_readable: info.human_readable.unwrap_or(false),
+        cpu_load_collector_handle: data.cpu_load_collector.clone(),
     };
 
     match info.output_format {
@@ -52,7 +63,14 @@ async fn index(info: Query<IndexQuery>) -> impl Responder {
 
 #[actix_rt::main]
 async fn main() -> Result<()> {
-    HttpServer::new(|| App::new().service(index))
+    let collector_handle = Arc::new(create_cpu_collector());
+    HttpServer::new(move || 
+        App::new()
+            .service(index)
+            .data(AppData {
+                cpu_load_collector: collector_handle.clone(),
+            })
+        )
         .bind("0.0.0.0:8080")?
         .run()
         .await
