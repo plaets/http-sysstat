@@ -448,6 +448,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "cstr-argument"
+version = "0.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "514570a4b719329df37f93448a70df2baac553020d0eb43a8dfa9c1f5ba7b658"
+dependencies = [
+ "cfg-if",
+ "memchr 1.0.2",
+]
+
+[[package]]
 name = "derive_more"
 version = "0.99.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -688,9 +698,9 @@ dependencies = [
 
 [[package]]
 name = "hermit-abi"
-version = "0.1.11"
+version = "0.1.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8a0d737e0f947a1864e93d33fdef4af8445a00d1ed8dc0c8ddb73139ea6abf15"
+checksum = "725cf19794cf90aa94e65050cb4191ff5d8fa87a498383774c47b332e3af952e"
 dependencies = [
  "libc",
 ]
@@ -719,20 +729,6 @@ dependencies = [
 
 [[package]]
 name = "http_sysstat"
-version = "0.1.0"
-dependencies = [
- "actix-rt",
- "actix-web",
- "chrono",
- "http_sysstat_pluginlib",
- "serde",
- "serde_json",
- "serde_urlencoded 0.5.5",
- "systemstat",
-]
-
-[[package]]
-name = "http_sysstat_pluginlib"
 version = "0.1.0"
 dependencies = [
  "actix-rt",
@@ -832,9 +828,19 @@ checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 
 [[package]]
 name = "libc"
-version = "0.2.69"
+version = "0.2.68"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "99e85c08494b21a9054e7fe1374a732aeadaff3980b6990b94bfd3a70f690005"
+checksum = "dea0c0405123bba743ee3f91f49b1c7cfb684eef0da0a50110f758ccf24cdff0"
+
+[[package]]
+name = "libsystemd-sys"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d7b98458cd04a5c3aacba6f1a3a3c4b9abcb0ae4d66a055eee502e0d52dc226b"
+dependencies = [
+ "libc",
+ "pkg-config",
+]
 
 [[package]]
 name = "linked-hash-map"
@@ -994,9 +1000,9 @@ dependencies = [
 
 [[package]]
 name = "num_cpus"
-version = "1.13.0"
+version = "1.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "05499f3756671c15885fee9034446956fff3f243d6077b91e5767df161f766b3"
+checksum = "46203554f085ff89c235cd12f7075f3233af9b11ed7c9e16dfe2560d03313ce6"
 dependencies = [
  "hermit-abi",
  "libc",
@@ -1040,18 +1046,18 @@ checksum = "d4fd5641d01c8f18a23da7b6fe29298ff4b55afcccdf78973b24cf3175fee32e"
 
 [[package]]
 name = "pin-project"
-version = "0.4.9"
+version = "0.4.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6f6a7f5eee6292c559c793430c55c00aea9d3b3d1905e855806ca4d7253426a2"
+checksum = "7804a463a8d9572f13453c516a5faea534a2403d7ced2f0c7e100eeff072772c"
 dependencies = [
  "pin-project-internal",
 ]
 
 [[package]]
 name = "pin-project-internal"
-version = "0.4.9"
+version = "0.4.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8988430ce790d8682672117bc06dda364c0be32d3abd738234f19f3240bad99a"
+checksum = "385322a45f2ecf3410c68d2a549a4a2685e8051d0f278e39743ff4e451cb9b3f"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1069,6 +1075,12 @@ name = "pin-utils"
 version = "0.1.0-alpha.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5894c618ce612a3fa23881b152b608bafb8c56cfc22f434a3ba3120b40f7b587"
+
+[[package]]
+name = "pkg-config"
+version = "0.3.17"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "05da548ad6865900e60eaba7f589cc0783590a92e940c26953ff81ddbab2d677"
 
 [[package]]
 name = "ppv-lite86"
@@ -1324,6 +1336,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "systemd"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "daf2fd2d346d2dfb5fdc5f47b355f60dcfc35f5ee3e89e64e7ae2849ec8792a5"
+dependencies = [
+ "cstr-argument",
+ "libc",
+ "libsystemd-sys",
+ "log",
+ "utf8-cstr",
+]
+
+[[package]]
 name = "systemstat"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1342,14 +1367,7 @@ dependencies = [
 name = "test_plugin"
 version = "0.1.0"
 dependencies = [
- "actix-rt",
- "actix-web",
- "chrono",
- "http_sysstat_pluginlib",
- "serde",
- "serde_json",
- "serde_urlencoded 0.5.5",
- "systemstat",
+ "systemd",
 ]
 
 [[package]]
@@ -1383,9 +1401,9 @@ dependencies = [
 
 [[package]]
 name = "tokio"
-version = "0.2.18"
+version = "0.2.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "34ef16d072d2b6dc8b4a56c70f5c5ced1a37752116f8e7c1e80c659aa7cb6713"
+checksum = "39fb9142eb6e9cc37f4f29144e62618440b149a138eee01a7bbe9b9226aaf17c"
 dependencies = [
  "bytes",
  "fnv",
@@ -1520,6 +1538,12 @@ dependencies = [
  "matches",
  "percent-encoding 2.1.0",
 ]
+
+[[package]]
+name = "utf8-cstr"
+version = "0.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "55bcbb425141152b10d5693095950b51c3745d019363fc2929ffd8f61449b628"
 
 [[package]]
 name = "wasi"

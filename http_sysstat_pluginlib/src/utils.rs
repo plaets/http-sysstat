@@ -2,7 +2,7 @@ use serde::{Serialize};
 use chrono::{Utc, Local, DateTime};
 use std::io::{Result};
 
-use crate::plugin_lib::stats_collector::{DateFormat, StatsConfig};
+use crate::stats_collector::{DateFormat, StatsConfig};
 
 pub fn print_err<T>(r: Result<T>) -> Option<T> { //TODO: should take config and print to logs instead (rename to log_err for ex.)
     match r {

@@ -4,9 +4,9 @@ use chrono::{offset};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use http_sysstat::plugin_lib::interval_collector::{IntervalCollector, IntervalCollectorHandle};
-use http_sysstat::plugin_lib::stats_collector::{StatsCollector, DateFormat, StatsConfig};
-use http_sysstat::plugin_lib::utils::*;
+use http_sysstat_pluginlib::interval_collector::{IntervalCollector, IntervalCollectorHandle};
+use http_sysstat_pluginlib::stats_collector::{StatsCollector, DateFormat, StatsConfig};
+use http_sysstat_pluginlib::utils::*;
 
 pub struct TimeCollector;
 impl StatsCollector for TimeCollector {
