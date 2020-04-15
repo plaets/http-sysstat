@@ -1,68 +1,18 @@
-use serde::{Serialize};
 use serde_json::{Value, json};
 use systemstat::{System, Platform, data::CPULoad, data::DelayedMeasurement};
-use chrono::{offset, Utc, Local, DateTime};
-use std::io::{Result,Error};
+use chrono::{offset};
 use std::sync::{Arc, Mutex};
-use std::collections::HashMap;
 use std::time::Duration;
 
-use crate::{DateFormat, IndexQuery};
-use crate::interval_collector::{IntervalCollector, IntervalCollectorHandle};
+use http_sysstat::plugin_lib::interval_collector::{IntervalCollector, IntervalCollectorHandle};
+use http_sysstat::plugin_lib::stats_collector::{StatsCollector, DateFormat, StatsConfig};
+use http_sysstat::plugin_lib::utils::*;
 
-fn print_err<T>(r: Result<T>) -> Option<T> {
-    match r {
-        Ok(val) => Some(val),
-        Err(err) => {
-            println!("error: {:?}", err);
-            None
-        }
-    }
-}
-
-fn to_memorysize(cfg: &StatsConfig, size: u64) -> MemorySize {
-    if cfg.human_readable {
-        MemorySize::HumanReadable((size/(1024*1024)).to_string() + "MiB") 
-    } else {
-        MemorySize::Bytes(size)
-    }
-}
-
-pub struct StatsConfig {
-    pub date_format: DateFormat,
-    pub human_readable: bool,
-    pub query_other: HashMap<String, String>,
-}
-
-pub trait StatCollector: Send {
-    fn new(/* program config */) -> Self where Self: Sized;
-    fn collect(&self, config: &StatsConfig) -> serde_json::Result<Value>;
-    fn name(&self) -> &'static str;
-}
-
-#[derive(Serialize)]
-#[serde(untagged)]
-pub enum Date {
-    Epoch(u64),
-    Local(String),
-    Utc(String),
-}
-
-#[derive(Serialize)]
-#[serde(untagged)]
-pub enum MemorySize {
-    Bytes(u64),
-    HumanReadable(String),
-}
-
-struct TimeCollector;
-
-impl StatCollector for TimeCollector {
+pub struct TimeCollector;
+impl StatsCollector for TimeCollector {
     fn new() -> Self { Self{} }
 
     fn collect(&self, cfg: &StatsConfig) -> serde_json::Result<Value> {
-        let sys = System::new();
-        
         serde_json::to_value(match cfg.date_format {
             DateFormat::Epoch => Date::Epoch(offset::Utc::now().timestamp() as u64),
             DateFormat::Local => Date::Local(offset::Local::now().to_string()),
@@ -75,24 +25,15 @@ impl StatCollector for TimeCollector {
     }
 }
 
-fn convert_to_date(cfg: &StatsConfig, date: DateTime<Utc>) -> Date {
-   match cfg.date_format {
-       DateFormat::Epoch => Date::Epoch(date.timestamp() as u64),
-       DateFormat::Local => Date::Local(DateTime::<Local>::from(date).to_string()),
-       DateFormat::Utc => Date::Utc(date.to_string()),
-   }
-}
-
-struct UptimeCollector;
-
-impl StatCollector for UptimeCollector {
+pub struct UptimeCollector;
+impl StatsCollector for UptimeCollector {
     fn new() -> Self { Self {} }
 
     fn collect(&self, cfg: &StatsConfig) -> serde_json::Result<Value> {
         let sys = System::new();
         
         Ok(json!({
-            "uptime": print_err(sys.uptime()).map(|d| d.as_secs()),
+            "uptime": print_err(sys.uptime()).map(|d| d.as_secs()), //TODO: make this human readable
             "boot_time": print_err(sys.boot_time()).map(|d| convert_to_date(cfg, d)),
         }))
     }
@@ -102,9 +43,8 @@ impl StatCollector for UptimeCollector {
     }
 }
 
-struct MemoryStatCollector; 
-
-impl StatCollector for MemoryStatCollector {
+pub struct MemoryStatsCollector; 
+impl StatsCollector for MemoryStatsCollector {
     fn new() -> Self { Self {} }
 
     fn collect(&self, cfg: &StatsConfig) -> serde_json::Result<Value> {
@@ -123,20 +63,11 @@ impl StatCollector for MemoryStatCollector {
     }
 }
 
-#[derive(Serialize)]
-pub struct CpuLoad {
-    pub user: f32,
-    pub nice: f32,
-    pub system: f32,
-    pub interrupt: f32,
-    pub idle: f32,
-}
-
 pub struct CpuLoadCollector {
     handle: IntervalCollectorHandle<CPULoad>
 }
 
-impl StatCollector for CpuLoadCollector {
+impl StatsCollector for CpuLoadCollector {
     fn new() -> Self {
         let mut collector = IntervalCollector::new();
         collector
@@ -182,8 +113,7 @@ impl StatCollector for CpuLoadCollector {
 }
 
 pub struct CpuLoadAvgCollector;
-
-impl StatCollector for CpuLoadAvgCollector {
+impl StatsCollector for CpuLoadAvgCollector {
     fn new() -> Self { CpuLoadAvgCollector }
 
     fn collect(&self, cfg: &StatsConfig) -> serde_json::Result<Value> {
@@ -202,8 +132,7 @@ impl StatCollector for CpuLoadAvgCollector {
 }
 
 pub struct NetworkStatsCollector;
-
-impl StatCollector for NetworkStatsCollector {
+impl StatsCollector for NetworkStatsCollector {
     fn new() -> NetworkStatsCollector { NetworkStatsCollector }
 
     fn collect(&self, cfg: &StatsConfig) -> serde_json::Result<Value> {
@@ -230,10 +159,9 @@ impl StatCollector for NetworkStatsCollector {
     }
 }
 
-pub struct SocketStatCollector;
-
-impl StatCollector for SocketStatCollector {
-    fn new() -> SocketStatCollector { SocketStatCollector }
+pub struct SocketStatsCollector;
+impl StatsCollector for SocketStatsCollector {
+    fn new() -> SocketStatsCollector { SocketStatsCollector }
 
     fn collect(&self, cfg: &StatsConfig) -> serde_json::Result<Value> {
         let sys = System::new();
@@ -254,8 +182,7 @@ impl StatCollector for SocketStatCollector {
 }
 
 pub struct FilesystemStatsCollector;
-
-impl StatCollector for FilesystemStatsCollector {
+impl StatsCollector for FilesystemStatsCollector {
     fn new() -> FilesystemStatsCollector { FilesystemStatsCollector }
 
     fn collect(&self, cfg: &StatsConfig) -> serde_json::Result<Value> {
@@ -282,14 +209,14 @@ impl StatCollector for FilesystemStatsCollector {
     }
 }
 
-pub fn get_all() -> Vec<Box<StatCollector>> {
+pub fn get_all() -> Vec<Box<dyn StatsCollector>> {
     vec!(
         Box::new(TimeCollector::new()),
         Box::new(UptimeCollector::new()),
-        Box::new(MemoryStatCollector::new()),
+        Box::new(MemoryStatsCollector::new()),
         Box::new(CpuLoadCollector::new()),
         Box::new(CpuLoadAvgCollector::new()),
-        Box::new(SocketStatCollector::new()),
+        Box::new(SocketStatsCollector::new()),
         Box::new(NetworkStatsCollector::new()),
         Box::new(FilesystemStatsCollector::new()),
     )

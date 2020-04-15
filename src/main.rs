@@ -10,23 +10,18 @@ use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
 
 mod stats;
-use stats::{StatsConfig, StatCollector, get_all};
+use stats::get_all;
 
-mod interval_collector;
-use interval_collector::IntervalCollectorHandle;
+use http_sysstat::plugin_lib::stats_collector::{DateFormat, StatsCollector, StatsConfig};
 
 fn get_json_stats(cfg: &StatsConfig, data: &AppData) -> HttpResponse {
     let collectors = data.collectors.clone();
     let collectors_guard = collectors.lock().unwrap();
-    HttpResponse::Ok().json((*collectors_guard).iter().map(|c| ((*c).name(), (*c).collect(&cfg).unwrap())).collect::<HashMap<&'static str, Value>>())
-}
-
-#[derive(Deserialize, Clone, Copy)]
-#[serde(rename_all = "snake_case")]
-pub enum DateFormat {
-    Epoch,
-    Local,
-    Utc,
+    HttpResponse::Ok().json(
+        (*collectors_guard).iter()
+        .map(|c| ((*c).name(), (*c).collect(&cfg).unwrap()))
+        .collect::<HashMap<&'static str, Value>>()
+    )
 }
 
 #[derive(Deserialize, Clone, Copy)]
@@ -44,7 +39,7 @@ struct IndexQuery {
 }
 
 struct AppData {
-    collectors: Arc<Mutex<Vec<Box<StatCollector>>>>
+    collectors: Arc<Mutex<Vec<Box<dyn StatsCollector>>>>
 }
 
 #[get("/")]
