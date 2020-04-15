@@ -3,6 +3,7 @@ use std::fs::{read_dir};
 fn main() {
     //generate OUTPUT_DIR/http_sysstat_plugins.rs
     //include!(concat!(env!("OUTPUT_DIR"), "/http_sysstat_plugins.rs")) somewhere in the crate
+    //extern crate name;
     //fn get_plugins() -> Vec<Box<Plugin>> {
     //  vec!(
     //      /* plugins go there */

@@ -1,6 +1,6 @@
 [workspace]
 members = [
-    "http_sysstat",
     "http_sysstat_pluginlib",
     "plugins/test_plugin",
+    "http_sysstat",
 ]

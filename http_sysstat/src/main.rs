@@ -9,11 +9,11 @@ use std::io::Result;
 use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
 
-extern crate test_plugin;
-use test_plugin::TestPlugin;
-
 mod stats;
 use stats::get_all;
+
+extern crate test_plugin;
+use test_plugin::TestPlugin;
 
 use http_sysstat_pluginlib::stats_collector::{DateFormat, StatsCollector, StatsConfig};
 
