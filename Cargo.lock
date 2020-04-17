@@ -448,6 +448,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "default_plugins"
+version = "0.1.0"
+dependencies = [
+ "actix-rt",
+ "actix-web",
+ "chrono",
+ "http_sysstat_pluginlib",
+ "serde",
+ "serde_json",
+ "serde_urlencoded 0.5.5",
+ "systemstat",
+]
+
+[[package]]
 name = "derive_more"
 version = "0.99.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1336,20 +1350,6 @@ dependencies = [
  "nom",
  "time",
  "winapi 0.3.8",
-]
-
-[[package]]
-name = "test_plugin"
-version = "0.1.0"
-dependencies = [
- "actix-rt",
- "actix-web",
- "chrono",
- "http_sysstat_pluginlib",
- "serde",
- "serde_json",
- "serde_urlencoded 0.5.5",
- "systemstat",
 ]
 
 [[package]]

@@ -9,13 +9,9 @@ use std::io::Result;
 use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
 
-mod stats;
-use stats::get_all;
-
-extern crate test_plugin;
-use test_plugin::TestPlugin;
-
 use http_sysstat_pluginlib::stats_collector::{DateFormat, StatsCollector, StatsConfig};
+
+include!(concat!(env!("OUT_DIR"), "/plugins.rs"));
 
 fn get_json_stats(cfg: &StatsConfig, data: &AppData) -> HttpResponse {
     let collectors = data.collectors.clone();
