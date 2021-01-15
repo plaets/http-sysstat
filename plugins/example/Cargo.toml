@@ -1,5 +1,5 @@
 [package]
-name = "default_plugins"
+name = "example"
 version = "0.1.0"
 authors = ["plaets <plates.jsnm@gmail.com>"]
 edition = "2018"
@@ -7,13 +7,4 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-systemstat = "0.1.5"
 http_sysstat_pluginlib = { path = "../../http_sysstat_pluginlib/" }
-
-[dependencies.chrono]
-features = ["serde"]
-version = "0.4"
-
-[dependencies.serde]
-features = ["derive"]
-version = "1.0"

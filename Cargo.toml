@@ -2,5 +2,6 @@
 members = [
     "http_sysstat_pluginlib",
     "plugins/default_plugins",
+    "plugins/example",
     "http_sysstat",
 ]

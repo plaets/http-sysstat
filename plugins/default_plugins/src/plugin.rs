@@ -1,11 +1,12 @@
-use serde_json::{Value, json};
 use systemstat::{System, Platform, data::CPULoad, data::DelayedMeasurement};
 use chrono::{offset};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+use http_sysstat_pluginlib::serde_json;
+use http_sysstat_pluginlib::serde_json::{Value, json};
 use http_sysstat_pluginlib::interval_collector::{IntervalCollector, IntervalCollectorHandle};
-use http_sysstat_pluginlib::stats_collector::{StatsCollector, DateFormat, StatsConfig};
+use http_sysstat_pluginlib::stats_collector::{StatsCollector, DateFormat, StatsConfig, ConfigValue};
 use http_sysstat_pluginlib::utils::*;
 
 pub struct TimeCollector;
@@ -165,6 +166,17 @@ impl StatsCollector for SocketStatsCollector {
 
     fn collect(&self, cfg: &StatsConfig) -> serde_json::Result<Value> {
         let sys = System::new();
+
+        let cfg = cfg.plugin_config.clone();
+
+        if let Some(ConfigValue::Map(plugin_cfg)) = &cfg.get(&String::from(self.name())) {
+            if let Some(ConfigValue::Bool(disabled)) = &plugin_cfg.get("disabled") {
+                if *disabled {
+                    return Ok(json!({}))
+                }
+            }
+        }
+
         serde_json::to_value(print_err(sys.socket_stats()).map(|stats|
             json!({
                 "tcp_socks": stats.tcp_sockets_in_use as u64,
